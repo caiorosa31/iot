@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Energia em Baixa Tensão</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.4/mqtt.min.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>Dashboard — Energia em Baixa Tensão</h1>
+      <p>Controle real do ESP32 via MQTT/Wi-Fi — abra este arquivo com o broker rodando</p>
+    </div>
+    <div class="badges">
+      <span class="badge" id="badge-mqtt"><span class="dot"></span>Broker</span>
+    </div>
+  </header>
+
+  <div class="card">
+    <h2>Conexão com o broker</h2>
+    <div class="conn-grid">
+      <div class="field">
+        <label>Host do broker (IP do seu PC)</label>
+        <input id="host" placeholder="192.168.0.X" value="192.168.0.X">
+      </div>
+      <div class="field">
+        <label>Porta WebSocket</label>
+        <input id="port" value="9001">
+      </div>
+      <div class="field">
+        <label>Prefixo dos tópicos</label>
+        <input id="prefix" value="energia/esp32_caio">
+      </div>
+    </div>
+    <button class="primary" id="btn-connect">Conectar</button>
+    <button id="btn-disconnect" disabled>Desconectar</button>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Painel do protótipo</h2>
+      <div class="board-visual">
+        <div>
+          <div class="led" id="led"></div>
+          <div class="led-label">carga (LED)</div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button id="btn-on" disabled style="flex:1">Ligar carga (ON)</button>
+        <button id="btn-off" disabled style="flex:1">Desligar carga (OFF)</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Telemetria em tempo real</h2>
+      <div class="tele-grid">
+        <div class="tele"><div class="v" id="v-tensao">—</div><div class="u">V</div><div class="l">tensão</div></div>
+        <div class="tele"><div class="v" id="v-corrente">—</div><div class="u">A</div><div class="l">corrente</div></div>
+        <div class="tele"><div class="v" id="v-potencia">—</div><div class="u">W</div><div class="l">potência</div></div>
+      </div>
+      <div class="state-banner normal" id="state-banner">
+        <span><span class="s-label">estado&nbsp;</span><span id="state-text">—</span></span>
+        <span id="load-text">CARGA: —</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Log MQTT</h2>
+    <div class="log" id="log"></div>
+  </div>
+
+  <footer>Interface local — conecta direto ao broker Mosquitto da sua rede. Nada passa pela internet.</footer>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

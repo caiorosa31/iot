@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulação — Monitoramento de Energia em Baixa Tensão (ESP32 + MQTT)</title>
+<style>
+  :root{
+    --bg:#0F1416;
+    --panel:#161D20;
+    --panel-2:#1C2528;
+    --line:#2A3538;
+    --text:#E7EEEC;
+    --muted:#8CA3A0;
+    --accent:#2FBFA0;
+    --accent-dim:#1E5F51;
+    --amber:#E8A33D;
+    --red:#E5534B;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    --sans: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    padding:18px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:980px;margin:0 auto;}
+  header{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:8px;
+    border-bottom:1px solid var(--line);
+    padding-bottom:14px;
+    margin-bottom:16px;
+  }
+  header h1{
+    font-size:19px;
+    margin:0;
+    font-weight:650;
+    letter-spacing:-0.01em;
+  }
+  header p{
+    margin:4px 0 0;
+    color:var(--muted);
+    font-size:12.5px;
+  }
+  .badges{display:flex;gap:8px;flex-wrap:wrap;}
+  .badge{
+    font-family:var(--mono);
+    font-size:11px;
+    padding:4px 9px;
+    border-radius:20px;
+    border:1px solid var(--line);
+    color:var(--muted);
+    display:flex;
+    align-items:center;
+    gap:6px;
+    white-space:nowrap;
+  }
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--muted);}
+  .badge.on .dot{background:var(--accent);box-shadow:0 0 6px var(--accent);}
+  .badge.on{color:var(--accent);border-color:var(--accent-dim);}
+
+  .grid{
+    display:grid;
+    grid-template-columns:1.05fr 1fr;
+    gap:14px;
+  }
+  @media (max-width:760px){ .grid{grid-template-columns:1fr;} }
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:16px;
+  }
+  .card h2{
+    font-size:12px;
+    text-transform:none;
+    letter-spacing:0.01em;
+    margin:0 0 14px;
+    color:var(--muted);
+    font-weight:600;
+    border-bottom:1px solid var(--line);
+    padding-bottom:9px;
+  }
+
+  /* board panel */
+  .board-visual{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:26px;
+    padding:14px 0 20px;
+  }
+  .led{
+    width:34px;height:34px;border-radius:50%;
+    background:#3a2a1a;
+    border:2px solid #4a3a28;
+    box-shadow:inset 0 0 6px rgba(0,0,0,.5);
+    transition:all .25s ease;
+    position:relative;
+  }
+  .led.on{
+    background:radial-gradient(circle at 35% 30%, #ffe9b8, var(--amber) 60%);
+    border-color:#f0b84f;
+    box-shadow:0 0 18px 4px rgba(232,163,61,.65), inset 0 0 6px rgba(255,255,255,.4);
+  }
+  .led-label{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center;margin-top:8px;}
+  .chip{
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--muted);
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:8px 12px;
+    text-align:center;
+    min-width:96px;
+  }
+
+  .control-row{margin-bottom:16px;}
+  .control-row label{
+    display:flex;
+    justify-content:space-between;
+    font-size:12.5px;
+    color:var(--muted);
+    margin-bottom:6px;
+  }
+  .control-row label span.val{
+    font-family:var(--mono);
+    color:var(--text);
+    font-weight:600;
+  }
+  input[type=range]{
+    width:100%;
+    accent-color:var(--accent);
+    height:4px;
+  }
+  .toggle-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    font-size:12.5px;
+    color:var(--muted);
+    padding:9px 0;
+    border-top:1px dashed var(--line);
+  }
+  .switch{
+    position:relative;width:38px;height:20px;flex:none;
+  }
+  .switch input{opacity:0;width:0;height:0;}
+  .slider-toggle{
+    position:absolute;cursor:pointer;inset:0;
+    background:#30393c;border-radius:20px;transition:.2s;
+  }
+  .slider-toggle:before{
+    content:"";position:absolute;height:14px;width:14px;left:3px;top:3px;
+    background:#cfd8d6;border-radius:50%;transition:.2s;
+  }
+  input:checked + .slider-toggle{background:var(--accent-dim);}
+  input:checked + .slider-toggle:before{transform:translateX(18px);background:var(--accent);}
+
+  .btn-row{display:flex;gap:8px;margin-top:14px;}
+  button{
+    font-family:var(--sans);
+    font-size:12.5px;
+    font-weight:600;
+    padding:9px 14px;
+    border-radius:7px;
+    border:1px solid var(--line);
+    background:var(--panel-2);
+    color:var(--text);
+    cursor:pointer;
+    flex:1;
+    transition:.15s;
+  }
+  button:hover{border-color:var(--accent);}
+  button.primary{background:var(--accent-dim);border-color:var(--accent);color:#E9FFF9;}
+  button:disabled{opacity:.4;cursor:not-allowed;}
+
+  /* telemetry */
+  .tele-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+    margin-bottom:14px;
+  }
+  .tele{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:10px 8px;
+    text-align:center;
+  }
+  .tele .v{
+    font-family:var(--mono);
+    font-size:19px;
+    font-weight:700;
+  }
+  .tele .u{font-size:10px;color:var(--muted);margin-top:2px;}
+  .tele .l{font-size:10.5px;color:var(--muted);margin-top:5px;letter-spacing:.02em;}
+
+  .state-banner{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:12px 14px;
+    border-radius:8px;
+    font-family:var(--mono);
+    font-weight:700;
+    font-size:13px;
+    border:1px solid var(--line);
+    margin-bottom:14px;
+    transition:.2s;
+  }
+  .state-banner .s-label{color:var(--muted);font-weight:500;font-family:var(--sans);font-size:11.5px;}
+  .state-banner.normal{color:var(--accent);border-color:var(--accent-dim);background:rgba(47,191,160,.08);}
+  .state-banner.atencao{color:var(--amber);border-color:#6b5326;background:rgba(232,163,61,.08);}
+  .state-banner.critico{color:var(--red);border-color:#6b2c28;background:rgba(229,83,75,.1);}
+
+  .thresholds{font-size:11px;color:var(--muted);line-height:1.6;}
+  .thresholds b{color:var(--text);}
+
+  /* mqtt log */
+  .log-card{margin-top:14px;}
+  .log{
+    font-family:var(--mono);
+    font-size:11.5px;
+    line-height:1.75;
+    height:230px;
+    overflow-y:auto;
+    background:#0B0F11;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:10px 12px;
+  }
+  .log div{white-space:pre-wrap;word-break:break-all;}
+  .log .pub{color:var(--accent);}
+  .log .sub{color:var(--amber);}
+  .log .sys{color:var(--muted);}
+  .log .crit{color:var(--red);}
+  .log span.t{color:var(--muted);margin-right:6px;}
+
+  footer{
+    margin-top:16px;
+    font-size:11px;
+    color:var(--muted);
+    text-align:center;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>Monitoramento de Energia em Baixa Tensão</h1>
+      <p>Simulação do fluxo ESP32 → Wi-Fi → MQTT — sem hardware ou broker reais</p>
+    </div>
+    <div class="badges">
+      <span class="badge" id="badge-wifi"><span class="dot"></span>Wi-Fi</span>
+      <span class="badge" id="badge-mqtt"><span class="dot"></span>MQTT</span>
+      <span class="badge" id="badge-ina"><span class="dot"></span>INA219</span>
+    </div>
+  </header>
+
+  <div class="grid">
+    <!-- LEFT: board / controls -->
+    <div class="card">
+      <h2>Painel do protótipo</h2>
+
+      <div class="board-visual">
+        <div>
+          <div class="led" id="led"></div>
+          <div class="led-label">LED / carga</div>
+        </div>
+        <div class="chip" id="chip-gpio">GPIO34 · ADC<br><span id="chip-raw">0</span></div>
+      </div>
+
+      <div class="control-row">
+        <label>Potenciômetro (entrada analógica) <span class="val" id="pot-val">0</span></label>
+        <input type="range" id="pot" min="0" max="4095" value="1800">
+      </div>
+
+      <div class="toggle-row">
+        Usar sensor INA219 (medir corrente e potência reais)
+        <label class="switch">
+          <input type="checkbox" id="ina-toggle">
+          <span class="slider-toggle"></span>
+        </label>
+      </div>
+
+      <div class="btn-row">
+        <button id="btn-on">Publicar ON</button>
+        <button id="btn-off">Publicar OFF</button>
+      </div>
+      <div class="btn-row">
+        <button id="btn-reconnect" class="primary">Simular queda e reconexão Wi-Fi/MQTT</button>
+      </div>
+    </div>
+
+    <!-- RIGHT: telemetry -->
+    <div class="card">
+      <h2>Telemetria recebida no broker</h2>
+
+      <div class="tele-grid">
+        <div class="tele">
+          <div class="v" id="v-tensao">0.00</div>
+          <div class="u">V</div>
+          <div class="l">tensão</div>
+        </div>
+        <div class="tele">
+          <div class="v" id="v-corrente">—</div>
+          <div class="u">A</div>
+          <div class="l">corrente</div>
+        </div>
+        <div class="tele">
+          <div class="v" id="v-potencia">—</div>
+          <div class="u">W</div>
+          <div class="l">potência</div>
+        </div>
+      </div>
+
+      <div class="state-banner normal" id="state-banner">
+        <span><span class="s-label">estado&nbsp;</span><span id="state-text">NORMAL</span></span>
+        <span id="load-text">CARGA: OFF</span>
+      </div>
+
+      <div class="thresholds">
+        Limites de exemplo (ajustáveis conforme a fonte/carga real): <b>NORMAL</b> até 2,6 V ·
+        <b>ATENÇÃO</b> de 2,6 a 3,0 V · <b>CRÍTICO</b> acima de 3,0 V (desliga a carga automaticamente).
+      </div>
+    </div>
+  </div>
+
+  <div class="card log-card">
+    <h2>Log MQTT (energia/...)</h2>
+    <div class="log" id="log"></div>
+  </div>
+
+  <footer>Simulação lógica do protótipo IoT — os valores e limiares são ilustrativos, para fins de demonstração e teste da lógica antes da montagem física.</footer>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+const state = {
+  wifi:false, mqtt:false, ina:false,
+  load:false, alert:"NORMAL", raw:1800,
+};
+
+function log(dir, topic, payload){
+  const el = $('log');
+  const time = new Date().toLocaleTimeString('pt-BR', {hour12:false});
+  const row = document.createElement('div');
+  let cls = dir === 'pub' ? 'pub' : dir === 'sub' ? 'sub' : dir === 'crit' ? 'crit' : 'sys';
+  let arrow = dir === 'pub' ? '↑ ESP32→broker' : dir === 'sub' ? '↓ broker→ESP32' : '·';
+  row.className = cls;
+  row.innerHTML = `<span class="t">${time}</span>${arrow}  ${topic ? topic + '  ' : ''}${payload}`;
+  el.appendChild(row);
+  el.scrollTop = el.scrollHeight;
+  while (el.children.length > 60) el.removeChild(el.firstChild);
+}
+
+function setBadge(id, on){
+  $(id).classList.toggle('on', on);
+}
+
+function computeReadings(){
+  const raw = Number($('pot').value);
+  state.raw = raw;
+  const tensao = (raw / 4095) * 3.3;
+  $('chip-raw').textContent = raw;
+  $('pot-val').textContent = raw;
+  $('v-tensao').textContent = tensao.toFixed(2);
+
+  if (state.ina){
+    const baseCurrent = state.load ? 0.05 + (tensao/3.3)*0.22 : 0.01;
+    const jitter = (Math.random()-0.5)*0.01;
+    const corrente = Math.max(0, baseCurrent + jitter);
+    const potencia = tensao * corrente;
+    $('v-corrente').textContent = corrente.toFixed(2);
+    $('v-potencia').textContent = potencia.toFixed(2);
+    return { tensao, corrente, potencia };
+  } else {
+    $('v-corrente').textContent = '—';
+    $('v-potencia').textContent = '—';
+    return { tensao, corrente:null, potencia:null };
+  }
+}
+
+function updateAlertState(tensao){
+  let novo;
+  if (tensao > 3.0) novo = 'CRITICO';
+  else if (tensao >= 2.6) novo = 'ATENCAO';
+  else novo = 'NORMAL';
+
+  if (novo !== state.alert){
+    state.alert = novo;
+    const banner = $('state-banner');
+    banner.className = 'state-banner ' + (novo === 'NORMAL' ? 'normal' : novo === 'ATENCAO' ? 'atencao' : 'critico');
+    $('state-text').textContent = novo === 'ATENCAO' ? 'ATENÇÃO' : novo === 'CRITICO' ? 'CRÍTICO' : 'NORMAL';
+    log('pub', 'energia/alerta', novo);
+
+    if (novo === 'CRITICO' && state.load){
+      log('crit', null, 'limite crítico atingido — desligando a carga automaticamente');
+      setLoad(false, true);
+    }
+  }
+}
+
+function setLoad(on, auto){
+  state.load = on;
+  $('led').classList.toggle('on', on);
+  $('load-text').textContent = 'CARGA: ' + (on ? 'ON' : 'OFF');
+  if (!auto) log('sub', 'energia/comando/carga', on ? 'ON' : 'OFF');
+  setTimeout(() => {
+    log('pub', 'energia/confirmacao/carga', on ? 'ON' : 'OFF');
+  }, 220);
+}
+
+function publishTelemetry(){
+  if (!(state.wifi && state.mqtt)) return;
+  const r = computeReadings();
+  log('pub', 'energia/telemetria/tensao', r.tensao.toFixed(2));
+  if (state.ina){
+    log('pub', 'energia/telemetria/corrente', r.corrente.toFixed(2));
+    log('pub', 'energia/telemetria/potencia', r.potencia.toFixed(2));
+  }
+  updateAlertState(r.tensao);
+}
+
+// controls
+$('pot').addEventListener('input', computeReadings);
+
+$('ina-toggle').addEventListener('change', (e) => {
+  state.ina = e.target.checked;
+  setBadge('badge-ina', state.ina);
+  log('sys', null, state.ina ? 'INA219 habilitado — publicando corrente e potência' : 'INA219 desabilitado — somente leitura didática de tensão');
+  computeReadings();
+});
+
+$('btn-on').addEventListener('click', () => {
+  if (!(state.wifi && state.mqtt)) return;
+  setLoad(true);
+});
+$('btn-off').addEventListener('click', () => {
+  if (!(state.wifi && state.mqtt)) return;
+  setLoad(false);
+});
+
+$('btn-reconnect').addEventListener('click', async () => {
+  const btn = $('btn-reconnect');
+  btn.disabled = true;
+  state.wifi = false; state.mqtt = false;
+  setBadge('badge-wifi', false); setBadge('badge-mqtt', false);
+  log('sys', null, 'conexão perdida — tentando reconectar ao Wi-Fi...');
+  await sleep(1200);
+  await connectSequence();
+  btn.disabled = false;
+});
+
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+async function connectSequence(){
+  log('sys', null, 'conectando ao Wi-Fi...');
+  await sleep(700);
+  state.wifi = true;
+  setBadge('badge-wifi', true);
+  log('sys', null, 'Wi-Fi conectado');
+
+  log('sys', null, 'conectando ao broker MQTT...');
+  await sleep(700);
+  state.mqtt = true;
+  setBadge('badge-mqtt', true);
+  log('pub', 'energia/status', 'online');
+  log('sys', null, 'inscrito em energia/comando/carga');
+}
+
+// boot
+(async () => {
+  computeReadings();
+  await connectSequence();
+  publishTelemetry();
+  setInterval(publishTelemetry, 2000);
+})();
+</script>
+</body>
+</html>
