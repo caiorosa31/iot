@@ -1,8 +1,8 @@
-# Projeto IoT - Grupo 7: Energia em Baixa Tensão
+# EnergiaIOT — Monitoramento e Controle de Energia em Baixa Tensão
 
-Monitoramento e controle remoto de uma carga de baixa tensão com ESP32, sensor INA219, broker MQTT próprio (Mosquitto) e dashboard web.
-
-Disciplina: Internet das Coisas - Católica SC | Prof. Edson Vaz Lopes | N1
+**Grupo 7 — Consumo em Baixa Tensão**  
+**Disciplina:** Internet das Coisas — Católica SC  
+**Professor:** Edson Vaz Lopes
 
 ## Integrantes
 
@@ -13,185 +13,229 @@ Disciplina: Internet das Coisas - Católica SC | Prof. Edson Vaz Lopes | N1
 - Caio Rodrigues
 - Bruno Costa
 
-## Familia tematica
+## Visão geral
 
-Grupo 7 - Consumo em baixa tensão.
+O **EnergiaIOT** é um projeto acadêmico de Internet das Coisas para monitorar tensão, corrente e potência de cargas alimentadas em baixa tensão e permitir comandos remotos de ligar/desligar. O projeto evolui do protótipo da N1 para uma arquitetura com backend, banco de dados, dashboard e alertas.
 
-## Problema
+**Importante:** o software está sendo testado com **dois dispositivos simulados**. A integração física com dois ESP32, sensores INA219, MOSFETs e coolers de 12 V é a próxima etapa; dados simulados não representam medições reais.
 
-Cargas de baixa tensão (LEDs, motores pequenos, dispositivos alimentados por fonte DC) costumam ser ligadas e desligadas sem nenhuma medição do que consomem e sem confirmação de que o comando foi realmente aplicado. Sem isso, não há como saber se a carga está operando dentro do esperado nem desligá-la à distância quando algo foge do normal.
+## Problema e objetivo
 
-## Usuario ou contexto de uso
+Cargas de baixa tensão podem funcionar sem acompanhamento de consumo ou confirmação do estado após comandos. O EnergiaIOT pretende oferecer:
 
-Pessoa que acompanha uma carga DC de bancada ou de uma instalação de baixa tensão e precisa ver tensão, corrente e potência em tempo real, ligar/desligar a carga pelo navegador e ser avisada quando o consumo entra em faixa de atenção ou crítica.
+- acompanhamento de tensão, corrente, potência e estado;
+- controle remoto ON/OFF com confirmação do dispositivo;
+- histórico de medições e eventos;
+- identificação de falhas e operação em estado seguro;
+- notificações de eventos importantes pelo Telegram.
 
-## Objetivo da N1
+## Evolução do projeto
 
-Demonstrar o ciclo IoT completo, de ida e volta:
+### N1 — Protótipo inicial
 
-1. medir tensão e corrente reais da carga (INA219);
-2. publicar a telemetria via Wi-Fi/MQTT;
-3. receber um comando ON/OFF remoto;
-4. aplicar o comando no atuador e confirmar o estado de volta;
-5. classificar o consumo em NORMAL, ATENCAO ou CRITICO e proteger a carga no estado crítico.
+A N1 utilizou ESP32, sensor INA219, carga de demonstração com LED, broker Mosquitto e dashboard web conectado via MQTT/WebSocket. O README original documentava tópicos de telemetria, comandos e confirmação de estado. O tratamento de leituras inválidas, LWT e calibração já apareciam como pendências.
 
-## Componentes
+A implementação e a documentação originais devem ser preservadas para manter o histórico acadêmico.
 
-| Componente | Função |
-|---|---|
-| ESP32 DevKit (ESP-WROOM-32) | Microcontrolador com Wi-Fi, executa o firmware |
-| INA219 | Mede tensão, corrente e potência da carga via I2C |
-| LED + resistor | Carga de baixa tensão controlável |
-| Fonte de baixa tensão (ou 3,3 V do próprio ESP32) | Alimenta a carga |
-| Protoboard e jumpers | Montagem |
-| Computador com Mosquitto | Broker MQTT próprio da equipe |
-| Navegador | Dashboard de controle |
+### N2 — Evolução de software
 
-## Arquitetura
+Foi preparado e executado localmente um **starter de software** com:
 
+- **Frontend:** Vue 3 + Vite + TypeScript, dashboard escuro/futurista, gráficos e visualização de dispositivos;
+- **Backend:** Python + FastAPI, endpoints REST de dispositivos, medições e comandos;
+- **Banco de dados:** PostgreSQL;
+- **Mensageria:** Eclipse Mosquitto (MQTT);
+- **Simulação:** dois dispositivos virtuais para exercitar o fluxo sem hardware;
+- **Infraestrutura:** Docker Compose.
+
+Nos testes locais, os cinco serviços (`frontend`, `api`, `db`, `mqtt` e `simulator`) iniciaram. O dashboard abriu e exibiu gráficos e informações simuladas. A API respondeu às consultas de dispositivos, comandos e medições.
+
+### Telegram — Integração em andamento
+
+Foi preparada uma versão do software com endpoint `POST /notifications/test` e configuração por variáveis de ambiente. O endpoint foi identificado na API em execução, mas o último teste informado retornou que `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` ainda não estavam disponíveis no container. **O recebimento efetivo de mensagens no Telegram ainda não foi confirmado.**
+
+O bot criado para o projeto é **[@IOTzinhobot](https://t.me/IOTzinhobot)**. Não publique o token de acesso.
+
+### N3 — Integração física planejada
+
+A próxima etapa prevê **dois conjuntos independentes**, cada um com:
+
+- 1 ESP32;
+- 1 sensor INA219 via I²C;
+- 1 cooler de 12 V como carga;
+- 1 estágio de acionamento com MOSFET adequado a GPIO de 3,3 V;
+- alimentação regulada, proteção e cabeamento dimensionados.
+
+O dimensionamento da fonte, do MOSFET, dos componentes de proteção e dos limites depende das especificações reais dos coolers e de testes físicos. **Não conectar o ESP32 diretamente a 12 V nem ligar o projeto à rede elétrica.**
+
+## Arquitetura prevista
+
+### Fluxo das medições
+
+```text
+Cooler 12 V / carga
+        ↓
+INA219 (tensão e corrente)
+        ↓ I²C
+ESP32 (firmware)
+        ↓ Wi-Fi / MQTT
+Mosquitto (broker)
+        ↓
+FastAPI (processamento)
+        ├──→ PostgreSQL (histórico)
+        └──→ API REST → Dashboard Vue 3
 ```
-INA219 -> ESP32 -> Wi-Fi -> Mosquitto (MQTT) -> Dashboard web     (telemetria: ida)
-Dashboard web -> Mosquitto -> ESP32 -> LED/carga -> confirmação   (comando: volta)
+
+### Fluxo de comando
+
+```text
+Usuário → Dashboard Vue 3 → FastAPI → MQTT / Mosquitto
+                                            ↓
+                                       ESP32 → MOSFET → Cooler 12 V
+                                            ↓
+                                  Confirmação de estado via MQTT
+                                            ↓
+                                     FastAPI → Dashboard
 ```
 
-- O ESP32 fala MQTT puro (porta 1883) com o broker.
-- O dashboard fala MQTT sobre WebSocket (porta 9001), porque o navegador não abre conexão MQTT/TCP direta.
-- Sensor e atuador não se conhecem: só se encontram pelos tópicos MQTT.
+Os fluxos com ESP32 e cooler descrevem a **arquitetura-alvo**; no ambiente atual, os dispositivos físicos são representados por um simulador.
 
-### Topicos MQTT
+### Alertas planejados
 
-Prefixo usado no firmware: `energia/esp32_caio/`
+```text
+Evento detectado → Backend FastAPI → API do Telegram → Usuário
+```
 
-| Tópico | Direção | Conteúdo |
+Eventos desejados: comando confirmado, consumo elevado, falha de sensor, perda de comunicação e reconexão. Os alertas automáticos devem ser validados individualmente; nem todos estão implementados.
+
+## Tecnologias
+
+| Camada | Tecnologia | Situação |
 |---|---|---|
-| `telemetria/tensao` | ESP32 -> broker | Tensão em V |
-| `telemetria/corrente` | ESP32 -> broker | Corrente em A |
-| `telemetria/potencia` | ESP32 -> broker | Potência em W (V x I) |
-| `comando/carga` | dashboard -> ESP32 | `ON` ou `OFF` |
-| `confirmacao/carga` | ESP32 -> broker | Estado realmente aplicado (`ON`/`OFF`) |
-| `alerta` | ESP32 -> broker | `NORMAL`, `ATENCAO` ou `CRITICO` |
-| `status` | ESP32 -> broker | `online` ao conectar |
+| Interface | Vue 3, Vite, TypeScript | Starter executado localmente |
+| API | Python, FastAPI | Executada localmente |
+| Persistência | PostgreSQL 16 | Container saudável nos testes |
+| Comunicação | MQTT / Mosquitto | Container iniciado |
+| Dispositivos de teste | Simulador de dois dispositivos | Executado localmente |
+| Orquestração | Docker Compose | Executado localmente |
+| Notificações | Telegram Bot API | Configuração e validação pendentes |
+| Hardware final | ESP32, INA219, MOSFET, cooler 12 V | Planejado; integração física pendente |
 
-Os valores são publicados como texto simples (número ou palavra), sem JSON.
+## Organização do repositório
 
-### Estados de protecao
+A estrutura original no GitHub contém diretórios como:
 
-| Estado | Condição (tensão lida) | Ação |
-|---|---|---|
-| NORMAL | abaixo de `LIMITE_ATENCAO` | opera normalmente |
-| ATENCAO | de `LIMITE_ATENCAO` até `LIMITE_CRITICO` | publica alerta |
-| CRITICO | acima de `LIMITE_CRITICO` | publica alerta, desliga a carga e confirma `OFF` |
+```text
+broker/
+dashboard/          # Dashboard original da N1
+firmware/
+simulacao/
+docs/
+readme.md
+```
 
-Os limites no código (4,5 V e 5,5 V) são valores de exemplo e devem ser ajustados à fonte real. O alerta só é publicado quando o estado muda.
+**Atenção:** o pacote de software mais recente foi executado em uma pasta local separada (`EnergiaIOT_software_telegram`). Isso **não significa que seus arquivos já foram enviados para este repositório**. Ao integrar o pacote, preservar `dashboard/` e `firmware/` originais e adicionar a nova aplicação em diretórios próprios.
 
-## Ligacoes (pinagem)
+Uma estrutura sugerida após a integração é:
 
-| INA219 | ESP32 |
+```text
+backend/
+frontend/           # Novo dashboard Vue 3
+broker/
+dashboard/          # Legado da N1 (preservado)
+firmware/
+simulacao/
+simulator/
+docs/
+compose.yaml
+.env.example
+readme.md
+```
+
+A estrutura acima é **proposta**, não uma listagem confirmada da branch `main`.
+
+## Executando o starter local
+
+Os comandos a seguir são para a **pasta do pacote de software extraído**, que contém o arquivo Compose; não necessariamente para a raiz atual do GitHub.
+
+### Requisitos
+
+- Docker Desktop e Docker Compose;
+- portas `5173` e `8000` livres;
+- configuração `.env` baseada em `.env.example`, quando presente.
+
+### Inicialização
+
+```bash
+docker compose up -d --build
+docker compose ps
+```
+
+Acessos locais:
+
+- Dashboard: http://localhost:5173
+- Documentação da API: http://localhost:8000/docs
+- Verificação de saúde: http://localhost:8000/health
+
+Se existirem simultaneamente `compose.yaml` e `docker-compose.yml`, selecionar explicitamente o arquivo correto com `docker compose -f <arquivo> ...`. Não manter arquivos divergentes sem necessidade.
+
+### Telegram
+
+Configurar **localmente**, sem enviar o `.env` ao GitHub:
+
+```dotenv
+TELEGRAM_BOT_TOKEN=SEU_TOKEN_PRIVADO
+TELEGRAM_CHAT_ID=SEU_CHAT_ID
+```
+
+Verificar se o serviço `api` recebe essas variáveis por `environment` ou `env_file` no Compose. Após corrigir a configuração:
+
+```bash
+docker compose up -d --force-recreate api
+```
+
+O endpoint de teste da versão Telegram é `POST /notifications/test`, autenticado com a chave de API configurada. Um retorno de enfileiramento não comprova a entrega; confirmar o recebimento no Telegram e inspecionar os logs.
+
+**Segurança:** um token de bot já foi exposto durante a configuração. Ele deve ser revogado no BotFather e substituído antes do uso contínuo. Nunca incluir tokens, senhas, chaves de API ou credenciais Wi-Fi no Git.
+
+## Firmware e segurança planejados
+
+- Iniciar com a carga desligada;
+- ler INA219 e validar medições;
+- receber comandos MQTT e confirmar o estado realmente aplicado;
+- tentar reconectar ao Wi-Fi e ao broker após interrupções;
+- não executar comandos antigos retidos no tópico de acionamento;
+- desligar a carga e registrar falha quando uma condição crítica for detectada;
+- implementar modos **seguro**, **manual** e **automático**, nessa ordem de prioridade;
+- utilizar LWT/keep alive para auxiliar a identificação de desconexões;
+- validar acionamento, limites e falhas com o hardware real.
+
+Essas são **regras previstas**; não devem ser tratadas como funcionalidades comprovadas do firmware atual.
+
+## Estado atual e próximos passos
+
+| Item | Estado |
 |---|---|
-| VCC | 3V3 (nunca 5 V) |
-| GND | GND |
-| SDA | GPIO21 |
-| SCL | GPIO22 |
-| VIN+ | positivo da fonte |
-| VIN- | entrada da carga (resistor + LED) |
+| Documentação atualizada da arquitetura | Preparada |
+| Protótipo e histórico N1 | Preservar |
+| Dashboard novo com gráficos simulados | Testado localmente |
+| FastAPI, PostgreSQL, MQTT e simulador | Serviços iniciados localmente |
+| API de teste do Telegram | Disponível; credenciais ainda não validadas |
+| Envio real de notificações | Pendente de confirmação |
+| Publicação do novo software no GitHub | Pendente |
+| Montagem de dois circuitos físicos | Pendente |
+| Medição real dos dois coolers | Pendente |
+| Testes de falhas e proteções no hardware | Pendente |
+| Testes automatizados e CI | Planejados |
 
-LED da carga no GPIO26, com resistor em série, retornando ao GND comum.
+## Documentação
 
-## Como executar
+Consultar `docs/` para a documentação técnica e diagramas do projeto, incluindo `EnergiaIOT_CP12_Projeto_v1_1.pdf` e `README_DOCUMENTACAO.md` quando presentes na branch.
 
-### 1. Broker Mosquitto
+## Limitações e cuidados
 
-Em `mosquitto.conf`:
+Este é um protótipo educacional de baixa tensão. Os dados atuais do starter são **simulados**. A interface não comprova que o hardware está conectado. O acionamento de motor, a escolha da fonte, o circuito de proteção, os limites elétricos e os mecanismos de recuperação precisam de validação prática. A configuração inicial de MQTT e de credenciais locais não deve ser exposta à internet sem autenticação e proteção adequadas.
 
-```
-listener 1883
-listener 9001
-protocol websockets
-allow_anonymous true
-```
+---
 
-```
-mosquitto -c mosquitto.conf -v
-```
-
-Descubra o IP do computador (`ipconfig` no Windows) para usar no firmware.
-
-### 2. Firmware (`esp32_energia_avancado.ino`)
-
-1. No Arduino IDE, instale o suporte à placa ESP32 e as bibliotecas **PubSubClient** e **Adafruit INA219**.
-2. Edite `ssid`, `password` e `mqtt_server` (IP do computador com o broker).
-3. Selecione a placa ESP32 Dev Module e a porta, e faça o upload.
-4. Abra o Monitor Serial a 115200 baud e confira a conexão e as leituras.
-
-Para testar só o sensor, use `i2c_scanner.ino`: o INA219 deve aparecer em `0x40`.
-
-### 3. Dashboard (`dashboard_energia.html`)
-
-Abra o arquivo no navegador, informe o IP do broker, a porta `9001` e o prefixo dos tópicos, e conecte. O painel mostra tensão, corrente, potência, alerta e estado da carga, e tem botões ON/OFF.
-
-## Estrutura do repositorio
-
-```
-esp32_energia_avancado.ino   firmware do ESP32
-i2c_scanner.ino              teste de fiação I2C
-dashboard_energia.html       dashboard web (MQTT sobre WebSocket)
-simulacao_iot_energia.html   simulação em software do sistema
-README.md
-```
-
-## Atendimento aos requisitos minimos da N1
-
-| Requisito | Situação |
-|---|---|
-| ESP32 + sensor real + atuador | Sim (INA219 + LED) |
-| Wi-Fi com reconexão | Sim |
-| Publicação MQTT | Sim |
-| Tópico de comando | Sim |
-| Confirmação de estado/ação | Sim |
-| Logs seriais | Sim |
-| Firmware organizado em funções | Sim |
-| Validação de leitura inválida | Parcial: ainda não há tratamento explícito |
-| Documentação | Este README e o guia técnico |
-
-## Seguranca
-
-- Somente baixa tensão. É proibida qualquer conexão à rede elétrica.
-- GND comum entre fonte, sensor, ESP32 e carga.
-- Resistor em série com o LED e conferência de polaridade.
-- Alimentar o INA219 em 3,3 V e evitar curto entre 3,3 V, 5 V e GND.
-- Desligar tudo antes de remontar o circuito.
-- Protótipo educacional, não é produto certificado.
-- Não versionar a senha do Wi-Fi: mantenha `ssid`/`password` em um `secrets.h` fora do repositório.
-
-## Backlog
-
-| Tarefa | Responsável | Status |
-|---|---|---|
-| Criar repositório e README | a definir | Feito |
-| Testar ESP32 com LED | a definir | Feito |
-| Conectar ao Wi-Fi e publicar/receber MQTT | a definir | Feito |
-| Montar broker Mosquitto próprio | a definir | Feito |
-| Dashboard com telemetria e comando ON/OFF | a definir | Feito |
-| Máquina de estados NORMAL/ATENCAO/CRITICO | a definir | Feito |
-| Leitura real com INA219 | a definir | Em andamento |
-| Calibrar limites com a fonte real | a definir | A fazer |
-| Tratar leitura inválida do sensor | a definir | A fazer |
-| Configurar Last Will no broker | a definir | A fazer |
-| Fotos e vídeo da demonstração | a definir | A fazer |
-
-## Limitacoes conhecidas
-
-- Todas as publicações usam QoS 0 (padrão da biblioteca PubSubClient), sem garantia de entrega no protocolo. A confirmação de comando é feita pela aplicação, no tópico `confirmacao/carga`.
-- Não há Last Will configurado no `connect()`. O `online` é publicado manualmente e uma queda abrupta do ESP32 não gera `offline` automático.
-- Payloads em texto simples, sem JSON.
-- A máquina de estados usa limiares fixos, sem histerese.
-- O broker aceita conexões anônimas, adequado apenas para rede local de laboratório.
-
-## Primeiro risco tecnico
-
-Fiação I2C do INA219: sem contato firme em SDA, SCL, VCC ou GND, o sensor não responde (`ina219.begin()` falha e o scanner mostra "nenhum dispositivo encontrado"). Mitigação: validar o barramento com `i2c_scanner.ino` antes de rodar o firmware completo.
-
-## Duvidas para o professor
-
-- A validação de leitura inválida precisa tratar também falha de comunicação I2C?
-- Para a N1, é aceitável manter QoS 0 e o `online` manual, ou o Last Will é esperado?
+**EnergiaIOT — Grupo 7 | Internet das Coisas | Católica SC**
