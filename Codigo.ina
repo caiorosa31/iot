@@ -1,0 +1,78 @@
+#include <Wire.h>
+#include <Adafruit_INA219.h>
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include "secrets.h"
+
+Adafruit_INA219 ina;
+WiFiClient net;
+PubSubClient mqtt(net);
+#define GATE 26
+// Limites ilustrativos: ajustar à especificação do cooler e da fonte.
+const float VMIN=10.8, VMAX=13.2, VAVISO=12.6;
+const char* ID = device_id;
+String base=String("energia/")+ID;
+bool ligado=false, sensorOK=false, seguro=false;
+unsigned long ultima=0, tentativa=0;
+void publicar(const char* sufixo, const char* valor, bool retain=false){
+  mqtt.publish((base+sufixo).c_str(),valor,retain);
+}
+void carga(bool on){
+  ligado=on && seguro && sensorOK;
+  digitalWrite(GATE,ligado?HIGH:LOW);
+  if(mqtt.connected()) publicar("/confirmacao/carga",ligado?"ON":"OFF",true);
+}
+void callback(char* topic, byte* data, unsigned int n){
+  String msg; for(unsigned int i=0;i<n;i++) msg+=(char)data[i];
+  if(String(topic)!=base+"/comando/carga") return;
+  if(msg=="ON" && mqtt.connected() && WiFi.status()==WL_CONNECTED) carga(true);
+  else if(msg=="OFF") carga(false);
+}
+void setup(){
+  pinMode(GATE,OUTPUT); digitalWrite(GATE,LOW);
+  Serial.begin(115200); Wire.begin(21,22);
+  sensorOK=ina.begin();
+  WiFi.mode(WIFI_STA); WiFi.begin(ssid,password);
+  mqtt.setServer(mqtt_server,1883); mqtt.setCallback(callback);
+  mqtt.setSocketTimeout(2);
+  mqtt.setKeepAlive(10);
+}
+void loop(){
+  if(WiFi.status()!=WL_CONNECTED || !mqtt.connected()){
+    seguro=false;
+    carga(false);
+    if(millis()-tentativa>=3000){
+      tentativa=millis();
+      if(WiFi.status()!=WL_CONNECTED) WiFi.reconnect();
+      else if(mqtt.connect(ID,(base+"/status").c_str(),0,true,"offline")){
+        // Apaga eventual comando retido antes de assinar (broker local controlado).
+        bool cleared = mqtt.publish((base+"/comando/carga").c_str(), "", true);
+        if(!cleared || !mqtt.subscribe((base+"/comando/carga").c_str())) { mqtt.disconnect(); return; }
+        publicar("/status","online",true); carga(false);
+      }
+    }
+  }
+  if(millis()-ultima>=2000){
+    ultima=millis();
+    Wire.beginTransmission(0x40);
+    bool responde=Wire.endTransmission()==0;
+    if(!sensorOK && responde) sensorOK=ina.begin();
+    float v=NAN,i=NAN;
+    if(!responde) sensorOK=false;
+    if(sensorOK && responde){v=ina.getBusVoltage_V(); i=ina.getCurrent_mA()/1000.0;}
+    seguro=sensorOK && responde && isfinite(v) && isfinite(i) && v>=VMIN && v<=VMAX;
+    if(!seguro) carga(false);
+    if(mqtt.connected()){
+      char b[24];
+      if(responde && isfinite(v) && isfinite(i)){
+        snprintf(b,sizeof(b),"%.2f",v); publicar("/telemetria/tensao",b);
+        snprintf(b,sizeof(b),"%.3f",i); publicar("/telemetria/corrente",b);
+        snprintf(b,sizeof(b),"%.3f",v*i); publicar("/telemetria/potencia",b);
+      }
+      publicar("/alerta",!seguro?"CRITICO":v>=VAVISO?"ATENCAO":"NORMAL",true);
+    }
+    Serial.printf("V=%.2f I=%.3f P=%.3f carga=%s\n",v,i,v*i,ligado?"ON":"OFF");
+  }
+  if(mqtt.connected()) mqtt.loop();
+  delay(10);
+}
