@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+message: "Se você usar este projeto, cite-o com os metadados abaixo."
+title: "EnergiaIOT: monitoramento e controle de energia em baixa tensão com ESP32, INA219 e MQTT"
+abstract: >-
+  Projeto acadêmico de Internet das Coisas (Grupo 7, Católica SC) que mede
+  tensão, corrente e potência de cargas DC de baixa tensão com ESP32 e INA219,
+  publica a telemetria via MQTT (Eclipse Mosquitto) e permite ligar e desligar
+  a carga remotamente por um dashboard web, com confirmação do estado aplicado
+  e desligamento local em condição insegura.
+type: software
+authors:
+  - given-names: William
+    family-names: Vodzinsky
+  - given-names: João
+    family-names: Francisco
+  - given-names: Iago
+    family-names: Koch
+  - given-names: Pedro
+    family-names: Israel
+  - given-names: Caio
+    family-names: Rodrigues
+  - given-names: Bruno
+    family-names: Costa
+repository-code: "https://github.com/caiorosa31/iot"
+license: MIT
+keywords:
+  - IoT
+  - ESP32
+  - INA219
+  - MQTT
+  - Mosquitto
+  - energia
+  - baixa tensão
+  - monitoramento de energia
+date-released: "2026-10-27"
