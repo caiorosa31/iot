@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Problemas conhecidos
+    url: https://github.com/caiorosa31/iot/blob/main/docs/KNOWN_ISSUES.md
+    about: Verifique se o problema já está registrado antes de abrir uma issue.
+  - name: Reportar vulnerabilidade ou segredo exposto
+    url: https://github.com/caiorosa31/iot/blob/main/SECURITY.md
+    about: Não publique segredos em issues. Siga a política de segurança.

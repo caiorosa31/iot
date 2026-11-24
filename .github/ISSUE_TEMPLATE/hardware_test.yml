@@ -1,0 +1,61 @@
+name: Registro de teste em hardware
+description: Registre um teste físico (medição, acionamento ou falha) como evidência para o R10.
+title: "[teste] "
+labels: ["hardware", "evidência"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Somente baixa tensão DC. Confira as [regras de segurança](https://github.com/caiorosa31/iot/blob/main/docs/HARDWARE.md#regras-de-segurança) antes de testar.
+  - type: dropdown
+    id: cenario
+    attributes:
+      label: Cenário
+      options:
+        - Medição de tensão/corrente
+        - Acionamento ON/OFF com confirmação
+        - Queda de Wi-Fi
+        - Broker indisponível
+        - Sensor desconectado / leitura inválida
+        - Comando inválido ou duplicado
+        - Outro
+    validations:
+      required: true
+  - type: input
+    id: dispositivo
+    attributes:
+      label: Dispositivo (device_id) e firmware/commit
+      placeholder: "energiaiot-01 · 9a0ab47"
+    validations:
+      required: true
+  - type: textarea
+    id: montagem
+    attributes:
+      label: Montagem
+      description: Fonte, carga, MOSFET, alimentação do ESP32 e pinos usados.
+    validations:
+      required: true
+  - type: textarea
+    id: procedimento
+    attributes:
+      label: Procedimento
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: Resultado esperado
+    validations:
+      required: true
+  - type: textarea
+    id: observado
+    attributes:
+      label: Resultado observado
+      description: Valores medidos, mensagens MQTT, logs seriais.
+    validations:
+      required: true
+  - type: textarea
+    id: evidencias
+    attributes:
+      label: Evidências
+      description: Fotos, vídeo, prints do dashboard ou do MQTT Explorer.

@@ -1,0 +1,52 @@
+name: Sugerir melhoria
+description: Proponha uma funcionalidade ou mudança (inclui itens do roadmap N3 e requisitos R1–R18).
+title: "[feat] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problema
+    attributes:
+      label: Problema ou motivação
+      description: Que necessidade isso resolve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposta
+    attributes:
+      label: Proposta
+      description: Como deveria funcionar? Inclua tópicos MQTT, payloads ou telas, se houver.
+    validations:
+      required: true
+  - type: dropdown
+    id: requisito
+    attributes:
+      label: Requisito relacionado (CP12)
+      multiple: true
+      options:
+        - Nenhum
+        - R1 Hardware
+        - R2 Firmware
+        - R3 Contrato MQTT
+        - R4 Backend
+        - R5 Banco
+        - R6 Interface
+        - R7 Ciclo de comando
+        - R8 Decisão remota
+        - R9 Segurança básica
+        - R10 Falhas
+        - R11 Entrega executável
+        - R12 Orquestração
+        - R13 Múltiplos dispositivos
+        - R14 Painel analítico
+        - R15 Notificação externa
+        - R16 Segurança avançada
+        - R17 OTA
+        - R18 Testes e CI
+  - type: textarea
+    id: aceite
+    attributes:
+      label: Critérios de aceite
+      description: Como saberemos que está pronto? Qual evidência será registrada?
+      placeholder: |
+        - [ ] ...
+        - [ ] Documentação atualizada

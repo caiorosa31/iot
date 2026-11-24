@@ -1,0 +1,63 @@
+name: Relatar bug
+description: Algo não funciona como documentado (firmware, broker, dashboard, simulação ou docs).
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Confira antes se o problema já está em [docs/KNOWN_ISSUES.md](https://github.com/caiorosa31/iot/blob/main/docs/KNOWN_ISSUES.md).
+        **Não cole senhas, tokens nem o conteúdo do seu `secrets.h` ou `.env`.** Para falhas de segurança, siga o SECURITY.md.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área
+      options:
+        - Firmware atual (Codigo.ina)
+        - Firmware N1 (firmware/esp32_energia)
+        - Scanner I²C
+        - Broker (mosquitto.conf)
+        - Dashboard
+        - Simulação
+        - Documentação
+        - Outra
+    validations:
+      required: true
+  - type: textarea
+    id: descricao
+    attributes:
+      label: O que aconteceu
+      description: Descreva o comportamento observado.
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: O que era esperado
+    validations:
+      required: true
+  - type: textarea
+    id: reproduzir
+    attributes:
+      label: Como reproduzir
+      placeholder: |
+        1. Gravar ...
+        2. Publicar `ON` em energia/<id>/comando/carga
+        3. Observar ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs (serial, broker com -v, console do navegador)
+      render: text
+  - type: input
+    id: commit
+    attributes:
+      label: Commit ou branch testado
+      placeholder: "ex.: 9a0ab47"
+  - type: textarea
+    id: ambiente
+    attributes:
+      label: Ambiente
+      description: Placa, versão do core ESP32 e das bibliotecas, versão do Mosquitto, navegador, sistema operacional e montagem (LED / cooler 12 V).
