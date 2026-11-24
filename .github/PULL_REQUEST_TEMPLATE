@@ -1,0 +1,33 @@
+## Resumo
+
+<!-- O que muda e por quê. Referencie issues (#N) e problemas conhecidos (KI-NN). -->
+
+## Tipo de mudança
+
+- [ ] `feat` nova funcionalidade
+- [ ] `fix` correção
+- [ ] `docs` documentação
+- [ ] `hw` hardware / esquema
+- [ ] `chore` organização / configuração
+
+## Áreas afetadas
+
+- [ ] Firmware
+- [ ] Contrato MQTT (tópicos, payloads, QoS, retain)
+- [ ] Broker
+- [ ] Dashboard / simulação
+- [ ] Documentação
+
+## Como foi testado
+
+<!-- Placa, montagem (LED / cooler 12 V), device_id, comandos usados, prints ou logs. -->
+
+## Checklist
+
+- [ ] Compila (firmware) ou abre sem erros no navegador (páginas web)
+- [ ] Nenhum segredo incluído (`secrets.h`, `.env`, tokens, senhas, IPs públicos)
+- [ ] A carga continua iniciando **desligada** e desligando sem rede ou com leitura inválida
+- [ ] Mudanças de tópico/payload refletidas em `docs/MQTT.md`
+- [ ] Documentação e `CHANGELOG.md` (seção *Não lançado*) atualizados
+- [ ] Nada é documentado como implementado sem código e evidência
+- [ ] Mudanças de hardware respeitam `docs/HARDWARE.md#regras-de-segurança`
